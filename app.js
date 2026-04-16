@@ -763,16 +763,17 @@ function draw() {
 function drawMobile(categories) {
   mobileList.innerHTML = "";
   if (window.innerWidth <= 480) {
-    const occs = categories
-      .flatMap((cat) => cat.children.map((occ) => ({ ...occ, category: cat.name })))
-      .sort((a, b) => Number(displayScore(b)) - Number(displayScore(a)));
+    mobileList.id = "mobile-occ-list";
+    const occs = (rawData?.children || [])
+      .flatMap((cat) => (cat.children || []).map((occ) => ({ ...occ, category: cat.name })))
+      .sort((a, b) => Number(b.ai_score || 0) - Number(a.ai_score || 0));
     occs.forEach((occ) => {
       const card = document.createElement("div");
       card.className = "mob-card";
       card.innerHTML = `
-        <span class="score" style="color:${scoreColor(displayScore(occ))}">${displayScore(occ).toFixed(1)}</span>
+        <span class="mob-score" style="color:${scoreColor(Number(occ.ai_score || 0))}">${Number(occ.ai_score || 0).toFixed(1)}</span>
         <span class="name">${escapeHtml(nameForOcc(occ))}</span>
-        <span class="wage">S$${Number(occ.gross_wage).toLocaleString()}/mo</span>
+        <span class="mob-wage">S$${Number(occ.gross_wage || 0).toLocaleString()}/mo</span>
       `;
       card.addEventListener("click", () => {
         openDrawer(occ, true);

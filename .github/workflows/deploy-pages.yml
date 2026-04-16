@@ -7,16 +7,15 @@ on:
       - "data/processed/**"
       - "web/**"
       - "scripts/validate_data.py"
+      - "scripts/pre_deploy_check.py"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: "pages"
+  group: "gh-pages-deploy"
   cancel-in-progress: true
 
 jobs:
@@ -34,32 +33,27 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Validate data schema
+      - name: Gatekeeper — validate data schema and audit
         run: python scripts/validate_data.py
 
-      - name: Prepare static cache headers
+      - name: Pre-deploy — fix absolute paths and verify SEO
+        run: python scripts/pre_deploy_check.py
+
+      - name: Verify index.html uses relative asset paths
         run: |
-          mkdir -p dist/aiscope-sg
-          cp -R web/. dist/aiscope-sg/
-          cat <<'EOF' > dist/aiscope-sg/_headers
-          /*
-            Cache-Control: public, max-age=300
-          /app.js
-            Cache-Control: public, max-age=86400
-          /styles.css
-            Cache-Control: public, max-age=86400
-          /data/*
-            Cache-Control: public, max-age=3600
-          EOF
+          set -e
+          bad=$(grep -E '(href|src)="/' web/index.html | grep -v 'https://' | grep -v '//' || true)
+          if [ -n "$bad" ]; then
+            echo "ERROR: index.html still contains root-absolute href/src (breaks /repo/ GitHub Pages URLs):"
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK: no root-absolute href/src in index.html"
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload web artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to GitHub Pages (gh-pages branch)
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: dist
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          branch: gh-pages
+          folder: web
+          clean: true
+          commit-message: "chore: deploy AIScope SG static site"

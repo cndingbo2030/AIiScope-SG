@@ -27,6 +27,7 @@ DEFAULT_OUTPUT = BASE / "data" / "raw" / "wages_fetched.json"
 # Default resource_id = dataset_id from data.gov.sg dataset URL (tabular resource).
 DEFAULT_RESOURCE_ID = "d_ec5d0e4ebdd2baee2a5aa1322a3156a5"
 DATASTORE_SEARCH = "https://data.gov.sg/api/action/datastore_search"
+REQUIRED_WAGE_FIELDS = ("gross_wage", "median_gross_wage")
 
 
 def _headers(api_key: str) -> dict[str, str]:
@@ -56,6 +57,11 @@ def fetch_datastore(
     if not body.get("success"):
         raise RuntimeError(f"datastore_search success=false: {repr(body)[:400]}")
     result = body.get("result") or {}
+    fields = [str(x.get("id", "")).strip().lower() for x in (result.get("fields") or []) if isinstance(x, dict)]
+    if fields and not any(f in fields for f in REQUIRED_WAGE_FIELDS):
+        raise RuntimeError(
+            "Fetched dataset missing gross wage fields; aborting to avoid accidental basic-wage ingestion."
+        )
     return {
         "source": "data.gov.sg_api",
         "resource_id": resource_id,

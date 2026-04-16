@@ -106,7 +106,7 @@ def run_llm(batch_size: int = 40) -> None:
 
     from anthropic import Anthropic
 
-    model = os.getenv("ANTHROPIC_TRANSLATE_MODEL", "claude-3-5-sonnet-20241022").strip()
+    model = os.getenv("ANTHROPIC_TRANSLATE_MODEL", "claude-sonnet-4-5").strip()
     data = json.loads(DATA_JSON.read_text(encoding="utf-8"))
     rows = flatten(data)
     existing: dict[str, str] = {}
@@ -246,6 +246,22 @@ def _translate_occ_batch_llm(
     return out
 
 
+def _translate_name_single_llm(client: Any, model: str, name_en: str) -> str:
+    prompt = (
+        "Translate this Singapore occupation title to concise zh-Hans. "
+        "Return plain text only, no JSON, no explanation.\n\n"
+        f"Title: {name_en}"
+    )
+    msg = client.messages.create(
+        model=model,
+        max_tokens=80,
+        temperature=0.1,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+    return text or name_en
+
+
 def _write_occupations_sidecar(
     zh_tree: dict[str, Any], category_label_map: dict[str, str], model: str
 ) -> None:
@@ -270,7 +286,7 @@ def run_data_zh(batch_size: int = 22) -> None:
 
     from anthropic import Anthropic
 
-    model = os.getenv("ANTHROPIC_TRANSLATE_MODEL", "claude-3-5-sonnet-20241022").strip()
+    model = os.getenv("ANTHROPIC_TRANSLATE_MODEL", "claude-sonnet-4-5").strip()
     en_data = json.loads(DATA_JSON.read_text(encoding="utf-8"))
     rows = flatten(en_data)
     cat_names = [str(c.get("name", "")) for c in en_data.get("children", []) if c.get("name")]
@@ -288,6 +304,19 @@ def run_data_zh(batch_size: int = 22) -> None:
         by_ssoc_tr.update(part)
         print(f"[translate] data-zh batch {i // batch_size + 1}, total ssoc keys={len(by_ssoc_tr)}")
         time.sleep(0.4)
+
+    # Ensure untranslated names are actively translated one-by-one.
+    for occ in rows:
+        code = str(occ.get("ssoc_code", "")).strip()
+        if not code:
+            continue
+        en_name = str(occ.get("name", "")).strip()
+        cur = by_ssoc_tr.get(code) or {}
+        cur_name = str(cur.get("name", "")).strip()
+        if not cur_name or cur_name == en_name:
+            zh_name = _translate_name_single_llm(client, model, en_name)
+            by_ssoc_tr[code] = {"name": zh_name, "reason": str(cur.get("reason", "")).strip()}
+            time.sleep(0.1)
 
     zh_tree: dict[str, Any] = copy.deepcopy(en_data)
     for cat in zh_tree.get("children", []):

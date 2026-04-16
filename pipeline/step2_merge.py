@@ -38,7 +38,7 @@ SSOC_MAJOR: dict[str, str] = {
     "6": "Agricultural & Fishery Workers",
     "7": "Craft & Trades Workers",
     "8": "Plant & Machine Operators",
-    "9": "Cleaners, Labourers & Related Workers",
+    "9": "Cleaners & Labourers",
 }
 
 _TRACKED_TARGET = int(os.getenv("AISCOPE_TRACKED_WORKFORCE", "340000"))
@@ -63,14 +63,8 @@ def _resolve_title(code: str, by_code: dict[str, str], ssoc20_to24: dict[str, st
 
 def _major_digit(code: str) -> str:
     c = str(code or "").strip()
+    c = c.lstrip("0")
     return c[0] if c and c[0] in SSOC_MAJOR else "2"
-
-
-def _pool_for_major(major_digit: str, by_code: dict[str, str]) -> list[str]:
-    pool = sorted({k for k in by_code if k.startswith(major_digit)}, key=lambda x: int(x))
-    if not pool:
-        pool = sorted(by_code.keys(), key=lambda x: int(x))
-    return pool
 
 
 def merge_rows(rows: list[dict[str, Any]], payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -79,22 +73,17 @@ def merge_rows(rows: list[dict[str, Any]], payload: dict[str, Any]) -> list[dict
     ssoc20_to24: dict[str, str] = payload.get("ssoc2020_to_2024") or {}
     used_codes: set[str] = set()
 
-    pool_iters: dict[str, list[str]] = {}
-    ptr: dict[str, int] = {}
     all_sorted = sorted(by_code.keys(), key=lambda x: int(x))
+    next_idx = 0
 
-    def next_code(major_digit: str) -> str:
-        if major_digit not in pool_iters:
-            pool_iters[major_digit] = _pool_for_major(major_digit, by_code)
-            ptr[major_digit] = 0
-        pool = pool_iters[major_digit]
-        if not pool:
-            raise RuntimeError(f"empty SSOC pool for major={major_digit}")
-        start = ptr[major_digit] % len(pool)
-        for step in range(len(pool)):
-            cand = pool[(start + step) % len(pool)]
+    def next_code() -> str:
+        nonlocal next_idx
+        if not all_sorted:
+            raise RuntimeError("empty SSOC code pool from map")
+        for _ in range(len(all_sorted) * 2):
+            cand = all_sorted[next_idx % len(all_sorted)]
+            next_idx += 1
             if cand not in used_codes:
-                ptr[major_digit] = (start + step + 1) % len(pool)
                 return cand
         for cand in all_sorted:
             if cand not in used_codes:
@@ -114,7 +103,7 @@ def merge_rows(rows: list[dict[str, Any]], payload: dict[str, Any]) -> list[dict
         needs_reassign = title is None or placeholder or code in used_codes
 
         if needs_reassign:
-            new_code = next_code(major)
+            new_code = next_code()
             used_codes.add(new_code)
             r["ssoc_code"] = new_code
             r["name"] = by_code[new_code]

@@ -54,6 +54,8 @@ Scoring requirements (2026 technology boundary):
 5) Regulatory moat:
    - For legal (SAL), medical (MOH), and financial (MAS) contexts, evaluate licensing
      enforceability. Strong mandatory licensing should materially lower replacement risk.
+   - Physically present, safety-critical, CAAS/regulatory-certified roles MUST score <= 4.0
+     regardless of how cognitive the task may sound.
 6) SkillsFuture transition advice:
    - reason must include one practical transition suggestion using a "SkillsFuture" framing.
 7) Multilingual moat:

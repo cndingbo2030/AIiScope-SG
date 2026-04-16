@@ -78,6 +78,16 @@ def vulnerability_index(occ: dict[str, Any]) -> float:
     return round(max(0.0, min(1.0, idx)), 3)
 
 
+def skill_overlap(a: dict[str, Any], b: dict[str, Any]) -> float:
+    sa = infer_skill_set(a)
+    sb = infer_skill_set(b)
+    if not sa or not sb:
+        return 0.0
+    inter = len(sa.intersection(sb))
+    union = len(sa.union(sb))
+    return inter / union if union else 0.0
+
+
 def build_graph(data: dict[str, Any], ssoc_titles: dict[str, str] | None = None) -> nx.MultiDiGraph:
     graph = nx.MultiDiGraph()
     occupations: list[dict[str, Any]] = []
@@ -136,33 +146,35 @@ def build_graph(data: dict[str, Any], ssoc_titles: dict[str, str] | None = None)
                     overlap_count=len(overlap),
                 )
 
-    # TRANSFER_PATH: high-risk -> lower-risk within same sector; cap per source to avoid O(n^2) blowups.
+    # TRANSFER_PATH: skill-overlap transitions into materially lower-risk roles.
     for occ_a in occupations:
-        if float(occ_a.get("ai_score", 0)) < 7:
+        manual_targets = occ_a.get("transition_targets") if isinstance(occ_a.get("transition_targets"), list) else []
+        if manual_targets:
+            for bname in [str(x).strip() for x in manual_targets[:2] if str(x).strip()]:
+                graph.add_edge(
+                    f"occupation::{occ_a['name']}",
+                    f"occupation::{bname}",
+                    rel_type="TRANSFER_PATH",
+                    via=[],
+                )
             continue
-        a_skills = infer_skill_set(occ_a)
-        candidates: list[tuple[float, str, tuple[str, ...]]] = []
+        candidates: list[tuple[float, str]] = []
         for occ_b in occupations:
             if occ_a["name"] == occ_b["name"]:
                 continue
-            if occ_a.get("category") != occ_b.get("category"):
+            if float(occ_b.get("ai_score", 0)) >= float(occ_a.get("ai_score", 0)) - 1.0:
                 continue
-            if float(occ_b.get("ai_score", 0)) > 4.5:
+            overlap = skill_overlap(occ_a, occ_b)
+            if overlap <= 0.3:
                 continue
-            b_skills = infer_skill_set(occ_b)
-            shared = a_skills.intersection(b_skills)
-            if not shared:
-                continue
-            wage = float(occ_b.get("gross_wage", 0))
-            rank = wage + 50 * len(shared) - float(occ_b.get("ai_score", 0)) * 40
-            candidates.append((rank, occ_b["name"], tuple(sorted(shared))))
-        candidates.sort(reverse=True)
-        for _, bname, via in candidates[:5]:
+            candidates.append((overlap, occ_b["name"]))
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        for overlap, bname in candidates[:2]:
             graph.add_edge(
                 f"occupation::{occ_a['name']}",
                 f"occupation::{bname}",
                 rel_type="TRANSFER_PATH",
-                via=list(via),
+                via=[f"skill_overlap={overlap:.2f}"],
             )
 
     return graph

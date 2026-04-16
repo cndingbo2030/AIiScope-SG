@@ -81,5 +81,25 @@
       "AI/ML Engineer",
       "Data Scientist"
     ]
+  },
+  "LEGISLATORS AND SENIOR OFFICIALS": {
+    "score": 2.0,
+    "reason": "Constitutionally elected or appointed roles in Singapore Parliament and Ministries. Political authority, public accountability and constituency representation cannot be delegated to AI systems under Singapore's system of parliamentary democracy."
+  },
+  "Religious Professionals": {
+    "score": 2.5,
+    "reason": "Pastoral care, spiritual guidance and religious ritual require human presence and authentic emotional connection. Singapore's diverse faith communities depend on human religious leadership for community cohesion."
+  },
+  "Poultry Farm Workers": {
+    "score": 2.5,
+    "reason": "Animal husbandry requires physical care, feeding and monitoring of live animals. Singapore's local food security farms rely on hands-on workers. Some automation in feeding exists but cannot fully replace farm worker presence."
+  },
+  "LIBRARIANS, ARCHIVISTS AND CURATORS": {
+    "score": 5.5,
+    "reason": "Cataloguing and search are increasingly automated by AI systems in NLB and national archives. However, curation, community outreach and archival interpretation require human expertise and cultural judgment."
+  },
+  "Civil Engineering Technicians": {
+    "score": 4.5,
+    "reason": "Site supervision, material inspection and BCA compliance checks require on-site human presence. AI assists with drawings and calculations but field technician roles remain essential in Singapore's construction sector."
   }
 }

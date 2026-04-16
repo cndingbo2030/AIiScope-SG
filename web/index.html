@@ -2,9 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<base id="ais-base" href="./">
+<script>
+(function () {
+  var p = window.location.pathname;
+  var dir = p.endsWith("/") ? p : p.replace(/\/[^/]*$/, "/") || "/";
+  if (dir === "//") dir = "/";
+  var b = document.getElementById("ais-base");
+  if (b) b.href = dir;
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<base href="./">
 <title>AIScope SG — Singapore AI Job Exposure Index</title>
+<link rel="canonical" href="https://aiscope.sg/">
 <meta name="description" content="AIScope SG: Singapore AI Job Exposure Index for occupations, wages, and transition pathways.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="AIScope SG: Singapore AI Job Exposure Index">
